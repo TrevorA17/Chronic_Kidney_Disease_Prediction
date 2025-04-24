@@ -95,3 +95,55 @@ anova_results <- lapply(numeric_vars, run_anova) %>%
 
 # 4. View results
 print(anova_results)
+
+# Load libraries
+library(ggplot2)
+library(GGally)
+
+# Univariate Plots
+
+# 1. Histogram of Blood Pressure (Bp)
+ggplot(kidney_data, aes(x = Bp)) +
+  geom_histogram(binwidth = 10, fill = "steelblue", color = "black") +
+  labs(title = "Distribution of Blood Pressure", x = "Blood Pressure", y = "Count") +
+  theme_minimal()
+
+# 2. Density plot of Serum Creatinine (Sc)
+ggplot(kidney_data, aes(x = Sc)) +
+  geom_density(fill = "tomato", alpha = 0.5) +
+  labs(title = "Density of Serum Creatinine", x = "Serum Creatinine", y = "Density") +
+  theme_minimal()
+
+# 3. Bar chart of Red Blood Cell count category (Rbc)
+ggplot(kidney_data, aes(x = Rbc)) +
+  geom_bar(fill = "gold", color = "black") +
+  labs(title = "Red Blood Cell Count Categories", x = "Rbc", y = "Frequency") +
+  theme_minimal()
+
+
+# Multivariate Plots
+
+# 1. Scatter plot of Urea (Bu) vs. Creatinine (Sc) colored by Class
+ggplot(kidney_data, aes(x = Bu, y = Sc, color = Class)) +
+  geom_point(alpha = 0.7, size = 2) +
+  labs(title = "Urea vs. Creatinine by Disease Class", x = "Blood Urea", y = "Serum Creatinine") +
+  theme_minimal()
+
+# 2. Boxplots of Hemoglobin (Hemo) by Disease Class
+ggplot(kidney_data, aes(x = Class, y = Hemo, fill = Class)) +
+  geom_boxplot() +
+  labs(title = "Hemoglobin by Disease Class", x = "Class", y = "Hemoglobin") +
+  theme_minimal()
+
+
+# 4. Heatmap of correlation matrix
+corr_mat <- cor(kidney_data %>% select(where(is.numeric)), use = "pairwise.complete.obs")
+library(reshape2)
+melted_corr <- reshape2::melt(corr_mat)
+ggplot(melted_corr, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap", x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
