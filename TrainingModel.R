@@ -106,3 +106,41 @@ rf_model <- train(Class ~ .,
 
 # Print the results of the random forest model
 print(rf_model)
+
+# Train a Support Vector Machine (SVM) with radial basis function kernel
+svm_model <- train(Class ~ ., 
+                   data = train_data,
+                   method = "svmRadial",
+                   trControl = ctrl,
+                   metric = "ROC",
+                   preProcess = c("center", "scale"),  # SVM benefits from feature scaling
+                   tuneLength = 10)  # Try different combinations of hyperparameters
+
+# Print the model summary
+print(svm_model)
+
+# Load caret and lattice if not already loaded
+library(caret)
+library(lattice)
+
+# Compare model performance using resamples
+model_comparison <- resamples(list(
+  Logistic = logistic_model,
+  RandomForest = rf_model,
+  SVM = svm_model
+))
+
+# Summary of resampling statistics
+summary(model_comparison)
+
+# Boxplots to compare performance metrics
+bwplot(model_comparison, metric = "ROC")
+bwplot(model_comparison, metric = "Sens")
+bwplot(model_comparison, metric = "Spec")
+
+# Dotplot for an overall visual comparison
+dotplot(model_comparison, metric = "ROC")
+
+
+
+
