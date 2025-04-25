@@ -1,0 +1,426 @@
+---
+title: "Chronic Kidney Disease Prediction"
+author: "Trevor Okinda"
+date: "2024"
+output:
+  github_document: 
+    toc: yes
+    toc_depth: 4
+    fig_width: 6
+    fig_height: 4
+    df_print: default
+editor_options:
+  chunk_output_type: console
+---
+
+# Student Details
+
+|                                              |     |
+|----------------------------------------------|-----|
+| **Student ID Number**                        | 134780 |
+| **Student Name**                             | Trevor Okinda |
+| **BBIT 4.2 Group**                           | C |
+| **Project Name**                             | A Rainfall prediction model |
+
+# Setup Chunk
+
+**Note:** the following KnitR options have been set as the global defaults: <BR> `knitr::opts_chunk$set(echo = TRUE, warning = FALSE, eval = TRUE, collapse = FALSE, tidy = TRUE)`.
+
+More KnitR options are documented here <https://bookdown.org/yihui/rmarkdown-cookbook/chunk-options.html> and here <https://yihui.org/knitr/options/>.
+
+```{r setup, include=FALSE}
+library(formatR)
+knitr::opts_chunk$set(
+  warning = FALSE,
+  collapse = FALSE
+)
+```
+
+### Source: 
+
+The dataset that was used can be downloaded here: *\<https://www.kaggle.com/datasets/abhia1999/chronic-kidney-disease/data\>*
+
+### Reference:
+
+*\<Abhia1999. (2022). Chronic Kidney Disease [Dataset]. Kaggle. https://www.kaggle.com/datasets/abhia1999/chronic-kidney-disease\>\
+Refer to the APA 7th edition manual for rules on how to cite datasets: <https://apastyle.apa.org/style-grammar-guidelines/references/examples/data-set-references>*
+
+# Understanding the Dataset (Exploratory Data Analysis (EDA))
+
+## Loading the Dataset
+```{r Load the dataset}
+# Load kidney disease dataset
+kidney_data <- read.csv("new_model.csv", colClasses = c(
+  Bp     = "numeric",
+  Sg     = "numeric",
+  Al     = "numeric",
+  Su     = "numeric",
+  Rbc    = "factor",   # Red blood cells: 0/1 or “normal”/“abnormal”
+  Bu     = "numeric",  # Blood urea
+  Sc     = "numeric",  # Serum creatinine
+  Sod    = "numeric",  # Sodium
+  Pot    = "numeric",  # Potassium
+  Hemo   = "numeric",  # Hemoglobin
+  Wbcc   = "numeric",  # White blood cell count
+  Rbcc   = "numeric",  # Red blood cell count
+  Htn    = "factor",   # Hypertension: 0/1
+  Class  = "factor"    # Disease class: 0=no disease, 1=disease
+), header = TRUE)
+
+# Display the structure of the dataset
+str(kidney_data)
+
+# View the first few rows of the dataset
+head(kidney_data)
+
+# Open the dataset in a viewer window (in RStudio)
+View(kidney_data)
+```
+
+## Measures of Frequency
+```{r MOF}
+# Load necessary library
+library(dplyr)
+
+# 1. Measures of Frequency
+#    Count occurrences for each level of each factor column
+freq_Rbc   <- kidney_data %>% count(Rbc, name = "Freq")
+freq_Htn   <- kidney_data %>% count(Htn, name = "Freq")
+freq_Class <- kidney_data %>% count(Class, name = "Freq")
+```
+
+## Measures of Central Tendency
+```{r MOCT}
+# 2. Measures of Central Tendency
+#    Compute mean, median, and mode for numeric columns
+numeric_cols <- kidney_data %>% select(where(is.numeric))
+central_tendency <- numeric_cols %>% summarize_all(list(
+  Mean   = ~ mean(. , na.rm = TRUE),
+  Median = ~ median(. , na.rm = TRUE),
+  Mode   = ~ {
+    ux <- unique(.,   na.rm = TRUE)
+    ux[which.max(tabulate(match(., ux)))]
+  }
+))
+```
+
+## Measures of Distribution
+```{r MOD}
+# 3. Measures of Distribution
+#    Min, Max, Range, Standard Deviation, and Quantiles 
+distribution_measures <- numeric_cols %>% summarize_all(list(
+  Min    = ~ min(. , na.rm = TRUE),
+  Max    = ~ max(. , na.rm = TRUE),
+  Range  = ~ diff(range(. , na.rm = TRUE)),
+  SD     = ~ sd(. , na.rm = TRUE),
+  Q1     = ~ quantile(. , 0.25, na.rm = TRUE),
+  Q3     = ~ quantile(. , 0.75, na.rm = TRUE)
+))
+
+```
+
+## Measures of Relationship
+```{r MOR}
+# 4. Measures of Relationship
+#    Correlation matrix for numeric variables
+correlation_matrix <- cor(numeric_cols, use = "pairwise.complete.obs")
+```
+
+## Outputs
+```{r EDA outputs}
+# Print outputs
+freq_Rbc; freq_Htn; freq_Class
+central_tendency
+distribution_measures
+correlation_matrix
+```
+
+## ANOVA
+```{r ANOVA}
+# Load necessary package
+library(dplyr)
+library(broom)  # for tidy()
+
+# 1. Identify numeric columns
+numeric_vars <- kidney_data %>%
+  select(where(is.numeric)) %>%
+  names()
+
+# 2. Function to run ANOVA for one variable
+run_anova <- function(var_name) {
+  formula <- as.formula(paste(var_name, "~ Class"))
+  aov_res  <- aov(formula, data = kidney_data)
+  tidy_res <- tidy(aov_res)
+  # Extract the term row for 'Class'
+  class_row <- tidy_res %>% filter(term == "Class")
+  # Append variable name
+  class_row$variable <- var_name
+  class_row
+}
+
+# 3. Apply across all numeric variables
+anova_results <- lapply(numeric_vars, run_anova) %>%
+  bind_rows() %>%
+  select(variable, df, statistic, p.value)
+
+# 4. View results
+print(anova_results)
+```
+
+## Plots
+```{r Plots}
+
+# Load libraries
+library(ggplot2)
+library(GGally)
+
+# Univariate Plots
+
+# 1. Histogram of Blood Pressure (Bp)
+ggplot(kidney_data, aes(x = Bp)) +
+  geom_histogram(binwidth = 10, fill = "steelblue", color = "black") +
+  labs(title = "Distribution of Blood Pressure", x = "Blood Pressure", y = "Count") +
+  theme_minimal()
+
+# 2. Density plot of Serum Creatinine (Sc)
+ggplot(kidney_data, aes(x = Sc)) +
+  geom_density(fill = "tomato", alpha = 0.5) +
+  labs(title = "Density of Serum Creatinine", x = "Serum Creatinine", y = "Density") +
+  theme_minimal()
+
+# 3. Bar chart of Red Blood Cell count category (Rbc)
+ggplot(kidney_data, aes(x = Rbc)) +
+  geom_bar(fill = "gold", color = "black") +
+  labs(title = "Red Blood Cell Count Categories", x = "Rbc", y = "Frequency") +
+  theme_minimal()
+
+
+# Multivariate Plots
+
+# 1. Scatter plot of Urea (Bu) vs. Creatinine (Sc) colored by Class
+ggplot(kidney_data, aes(x = Bu, y = Sc, color = Class)) +
+  geom_point(alpha = 0.7, size = 2) +
+  labs(title = "Urea vs. Creatinine by Disease Class", x = "Blood Urea", y = "Serum Creatinine") +
+  theme_minimal()
+
+# 2. Boxplots of Hemoglobin (Hemo) by Disease Class
+ggplot(kidney_data, aes(x = Class, y = Hemo, fill = Class)) +
+  geom_boxplot() +
+  labs(title = "Hemoglobin by Disease Class", x = "Class", y = "Hemoglobin") +
+  theme_minimal()
+
+
+# 4. Heatmap of correlation matrix
+corr_mat <- cor(kidney_data %>% select(where(is.numeric)), use = "pairwise.complete.obs")
+library(reshape2)
+melted_corr <- reshape2::melt(corr_mat)
+ggplot(melted_corr, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap", x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+# Preprocessing & Data Transformation
+## Missing Values
+```{r Missing values}
+# 1. Total missing values in the entire data frame
+total_missing <- sum(is.na(kidney_data))
+print(paste("Total missing values:", total_missing))
+
+# 2. Missing values per column
+missing_by_column <- colSums(is.na(kidney_data))
+print("Missing values by column:")
+print(missing_by_column)
+
+# 3. Percentage of missing values per column
+missing_pct <- round(100 * missing_by_column / nrow(kidney_data), 2)
+print("Percentage of missing values by column:")
+print(missing_pct)
+
+# 4. Visual check with naniar (optional)
+if (!requireNamespace("naniar", quietly = TRUE)) {
+  install.packages("naniar")
+}
+library(naniar)
+# Plot a missingness map
+vis_miss(kidney_data)
+```
+
+## Recode Class Values
+```{r recode}
+# Recode the factor levels of the target variable
+levels(kidney_data$Class) <- c("Negative", "Positive")
+
+# Check the levels again to confirm
+levels(kidney_data$Class)
+```
+
+# Training Models
+## Data Splitting
+```{r Data Splitting}
+# Load required libraries
+library(caret)
+library(boot)
+
+set.seed(123)
+
+# 1. Data Splitting (80% train, 20% test)
+train_index <- createDataPartition(kidney_data$Class, p = 0.8, list = FALSE)
+train_data  <- kidney_data[train_index, ]
+test_data   <- kidney_data[-train_index, ]
+
+dim(test_data)
+dim(train_data)
+```
+
+## Bootstrapping
+```{r Bootstrapping}
+# 2. Bootstrapping on the training data
+#    Define a statistic function, e.g., mean of Blood Urea (Bu)
+boot_mean_bu <- function(data, indices) {
+  sampled <- data[indices, ]
+  return(mean(sampled$Bu, na.rm = TRUE))
+}
+
+#    Perform bootstrapping: 1000 resamples
+boot_results <- boot(data = train_data, statistic = boot_mean_bu, R = 1000)
+
+# 3. View Bootstrapping Results
+print(boot_results)
+
+# 4. Bootstrap Confidence Interval for the mean Bu
+boot_ci <- boot.ci(boot_results, type = c("norm", "basic", "perc"))
+print(boot_ci)
+
+# 5. (Optional) Plot the bootstrap distribution
+plot(boot_results)
+```
+
+## Cross-validation
+```{r Cross-validation}
+# Load necessary libraries
+library(caret)
+library(randomForest)
+library(e1071)  # For other classifiers if needed
+
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(kidney_data$Class, p = 0.8, list = FALSE)
+train_data <- kidney_data[trainIndex, ]
+test_data <- kidney_data[-trainIndex, ]
+
+# Set up cross-validation (repeated k-fold)
+ctrl <- trainControl(method = "repeatedcv", 
+                     number = 10,  # 10-fold cross-validation
+                     repeats = 3,  # Repeat the process 3 times
+                     classProbs = TRUE,  # For classification, need class probabilities
+                     summaryFunction = twoClassSummary)  # To track ROC, Sensitivity, etc.
+
+print(ctrl)
+```
+
+## Training Different Models
+```{r train different models}
+# Re-split the data since we modified the original dataset
+set.seed(123)
+trainIndex <- createDataPartition(kidney_data$Class, p = 0.8, list = FALSE)
+train_data <- kidney_data[trainIndex, ]
+test_data  <- kidney_data[-trainIndex, ]
+
+# Train the logistic regression model again
+logistic_model <- train(Class ~ ., 
+                        data = train_data, 
+                        method = "glm", 
+                        family = "binomial", 
+                        trControl = ctrl, 
+                        metric = "ROC")
+
+# Print model summary
+print(logistic_model)
+
+
+# Train a random forest model
+rf_model <- train(Class ~ ., 
+                  data = train_data, 
+                  method = "rf", 
+                  trControl = ctrl, 
+                  metric = "ROC")  # Use ROC for performance evaluation
+
+# Print the results of the random forest model
+print(rf_model)
+
+# Train a Support Vector Machine (SVM) with radial basis function kernel
+svm_model <- train(Class ~ ., 
+                   data = train_data,
+                   method = "svmRadial",
+                   trControl = ctrl,
+                   metric = "ROC",
+                   preProcess = c("center", "scale"),  # SVM benefits from feature scaling
+                   tuneLength = 10)  # Try different combinations of hyperparameters
+
+# Print the model summary
+print(svm_model)
+
+```
+
+## Performance Comparison Using resamples
+```{r Performance Comparison using resamples}
+# Load caret and lattice if not already loaded
+library(caret)
+library(lattice)
+
+# Compare model performance using resamples
+model_comparison <- resamples(list(
+  Logistic = logistic_model,
+  RandomForest = rf_model,
+  SVM = svm_model
+))
+
+# Summary of resampling statistics
+summary(model_comparison)
+
+# Boxplots to compare performance metrics
+bwplot(model_comparison, metric = "ROC")
+bwplot(model_comparison, metric = "Sens")
+bwplot(model_comparison, metric = "Spec")
+
+# Dotplot for an overall visual comparison
+dotplot(model_comparison, metric = "ROC")
+```
+
+## Saving Model
+```{r Saving Model}
+# Save the best performing model
+saveRDS(svm_model, "./models/saved_svm_model.rds")
+
+# Load the saved model
+loaded_svm_model <- readRDS("./models/saved_svm_model.rds")
+
+# Create a new sample input (example)
+new_patient <- data.frame(
+  Bp = 80,
+  Sg = 1.02,
+  Al = 1,
+  Su = 0,
+  Rbc = factor(1, levels = levels(kidney_data$Rbc)),
+  Bu = 36,
+  Sc = 1.2,
+  Sod = 137.53,
+  Pot = 4.63,
+  Hemo = 15.4,
+  Wbcc = 7800,
+  Rbcc = 5.2,
+  Htn = factor(1, levels = levels(kidney_data$Htn))
+)
+
+# Use the loaded model to predict
+prediction <- predict(loaded_svm_model, newdata = new_patient)
+
+# Print the prediction
+print(prediction)
+
+```
+
