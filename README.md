@@ -1,2 +1,2 @@
 # Chronic Kidney Disease Prediction
-Predicting whether or not the patients in the dataset have chronic kidney disease 
+This project focuses on predicting chronic kidney disease using machine learning techniques. Using a dataset sourced from Kaggle, the pipeline includes data cleaning, exploratory data analysis, statistical testing (ANOVA), and advanced modeling approaches including logistic regression, random forest, and support vector machines (SVM). Cross-validation and resampling techniques were employed to ensure robust model performance, with the best-performing model saved and deployed via a Plumber API in R. This application aims to assist in early detection of kidney disease, providing a valuable tool for healthcare support and analysis.
