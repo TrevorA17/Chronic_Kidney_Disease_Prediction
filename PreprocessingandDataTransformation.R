@@ -40,3 +40,6 @@ if (!requireNamespace("naniar", quietly = TRUE)) {
 library(naniar)
 # Plot a missingness map
 vis_miss(kidney_data)
+
+# Recode the factor levels of the target variable
+levels(kidney_data$Class) <- c("Negative", "Positive")

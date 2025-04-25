@@ -73,19 +73,29 @@ ctrl <- trainControl(method = "repeatedcv",
 
 print(ctrl)
 
-# Inspect the levels of the 'Class' factor
+# Recode the factor levels of the target variable
+levels(kidney_data$Class) <- c("Negative", "Positive")
+
+# Check the levels again to confirm
 levels(kidney_data$Class)
 
-# Train a logistic regression model
+# Re-split the data since we modified the original dataset
+set.seed(123)
+trainIndex <- createDataPartition(kidney_data$Class, p = 0.8, list = FALSE)
+train_data <- kidney_data[trainIndex, ]
+test_data  <- kidney_data[-trainIndex, ]
+
+# Train the logistic regression model again
 logistic_model <- train(Class ~ ., 
                         data = train_data, 
                         method = "glm", 
                         family = "binomial", 
                         trControl = ctrl, 
-                        metric = "ROC")  # Use ROC as the evaluation metric
+                        metric = "ROC")
 
-# Print the results of logistic regression model
+# Print model summary
 print(logistic_model)
+
 
 # Train a random forest model
 rf_model <- train(Class ~ ., 
